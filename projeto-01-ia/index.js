@@ -36,27 +36,49 @@ async function trainModel(inputXs, outputYs) {
   // qualquer coisa em que a resposta certa é apenas uma entre várias possíveis
   model.compile({optimizer:'adam', loss:'categoricalCrossentropy', metrics:['accuracy']})
 
+  //treinamento do modelo
+
+  // verbose: desabilita o lof interno ( e usa fallback)
+  //epochs: quantia de vezes que vai rodar no dataset
+  //shuffle: embaralha os dados, para evitar viés ( vicio)
+  await model.fit(
+    inputXs,
+    outputYs,
+    {
+        verbose:0,
+        epochs:100,
+        shuffle:true,
+        callbacks:{
+            onEpochEnd:(epoch,log) => console.log(
+                `Epoch: ${epoch}: loss = ${log.loss}`
+            )
+        }
+    }
+  )
+
+  return model
+
 }
 // Exemplo de pessoas para treino (cada pessoa com idade, cor e localização)
 // const pessoas = [
-//     { nome: "Erick", idade: 30, cor: "azul", localizacao: "São Paulo" },
-//     { nome: "Ana", idade: 25, cor: "vermelho", localizacao: "Rio" },
+//     { nome: "Marcelo", idade: 30, cor: "azul", localizacao: "São Paulo" },
+//     { nome: "Maria", idade: 25, cor: "vermelho", localizacao: "Rio" },
 //     { nome: "Carlos", idade: 40, cor: "verde", localizacao: "Curitiba" }
 // ];
 
 // Vetores de entrada com valores já normalizados e one-hot encoded
 // Ordem: [idade_normalizada, azul, vermelho, verde, São Paulo, Rio, Curitiba]
 // const tensorPessoas = [
-//     [0.33, 1, 0, 0, 1, 0, 0], // Erick
-//     [0, 0, 1, 0, 0, 1, 0],    // Ana
+//     [0.33, 1, 0, 0, 1, 0, 0], // Marcelo
+//     [0, 0, 1, 0, 0, 1, 0],    // Maria
 //     [1, 0, 0, 1, 0, 0, 1]     // Carlos
 // ]
 
 // Usamos apenas os dados numéricos, como a rede neural só entende números.
 // tensorPessoasNormalizado corresponde ao dataset de entrada do modelo.
 const tensorPessoasNormalizado = [
-  [0.33, 1, 0, 0, 1, 0, 0], // Erick
-  [0, 0, 1, 0, 0, 1, 0], // Ana
+  [0.33, 1, 0, 0, 1, 0, 0], // Marcelo
+  [0, 0, 1, 0, 0, 1, 0], // Maria
   [1, 0, 0, 1, 0, 0, 1], // Carlos
 ];
 
@@ -64,8 +86,8 @@ const tensorPessoasNormalizado = [
 // [premium, medium, basic]
 const labelsNomes = ["premium", "medium", "basic"]; // Ordem dos labels
 const tensorLabels = [
-  [1, 0, 0], // premium - Erick
-  [0, 1, 0], // medium - Ana
+  [1, 0, 0], // premium - Marcelo
+  [0, 1, 0], // medium - Maria
   [0, 0, 1], // basic - Carlos
 ];
 
@@ -73,4 +95,6 @@ const tensorLabels = [
 const inputXs = tf.tensor2d(tensorPessoasNormalizado);
 const outputYs = tf.tensor2d(tensorLabels);
 
+
+//Quanto mais dados melhor, assim o algoritmo consegue entender melhor
 const model = trainModel(inputXs, outputYs);
