@@ -13,13 +13,15 @@ async function trainModel(inputXs, outputYs) {
   // é como se ela deixasse somente os dados interessantes seguirem viagem na rede
   // se a informação chegou nesse neuronio é positiva, passa para frente.
   //se for zero ou negativa, pode jogar fora, nao vai servir para nada
-  model.add(tf.layers.dense({ inputShape: [7], units: 80, activation:'relu' }));
+  model.add(
+    tf.layers.dense({ inputShape: [7], units: 80, activation: "relu" }),
+  );
 
   //Saída: 3 neuronios
   // Pq? pois no momento possuo 3 categorias ( premium, medium e basic)
 
   //activation: softmax normaliza a saida em probabilidades
-  model.add(tf.layers.dense({units:3,activation:'softmax'}))
+  model.add(tf.layers.dense({ units: 3, activation: "softmax" }));
 
   // compilando o modelo
   // optimizer adam (adaptive moment estimation)
@@ -34,30 +36,41 @@ async function trainModel(inputXs, outputYs) {
   // maior o erro (loss)
   // Exemplo classico: classificação de imagens, recomendação e categorização de usuário
   // qualquer coisa em que a resposta certa é apenas uma entre várias possíveis
-  model.compile({optimizer:'adam', loss:'categoricalCrossentropy', metrics:['accuracy']})
+  model.compile({
+    optimizer: "adam",
+    loss: "categoricalCrossentropy",
+    metrics: ["accuracy"],
+  });
 
   //treinamento do modelo
 
   // verbose: desabilita o lof interno ( e usa fallback)
   //epochs: quantia de vezes que vai rodar no dataset
   //shuffle: embaralha os dados, para evitar viés ( vicio)
-  await model.fit(
-    inputXs,
-    outputYs,
-    {
-        verbose:0,
-        epochs:100,
-        shuffle:true,
-        callbacks:{
-            onEpochEnd:(epoch,log) => console.log(
-                `Epoch: ${epoch}: loss = ${log.loss}`
-            )
-        }
-    }
-  )
+  await model.fit(inputXs, outputYs, {
+    verbose: 0,
+    epochs: 100,
+    shuffle: true,
+    // callbacks: {
+    //   onEpochEnd: (epoch, log) =>
+    //     console.log(`Epoch: ${epoch}: loss = ${log.loss}`),
+    // },
+  });
 
-  return model
+  return model;
+}
 
+async function predict(model, pessoa) {
+  //transformar o array js para o tensor (tfjs)
+  // porque 2d? pois sao duas dimensões ( array de array )
+  const tfInput = tf.tensor2d(pessoa);
+
+  //Realizando a predição ( output será um vetor de 3 probabilidades)
+  const pred = model.predict(tfInput);
+  const predArray = await pred.array();
+
+  return predArray[0].map((prob, index) => ({ prob, index }));
+  console.log(predArray);
 }
 // Exemplo de pessoas para treino (cada pessoa com idade, cor e localização)
 // const pessoas = [
@@ -95,6 +108,36 @@ const tensorLabels = [
 const inputXs = tf.tensor2d(tensorPessoasNormalizado);
 const outputYs = tf.tensor2d(tensorLabels);
 
-
 //Quanto mais dados melhor, assim o algoritmo consegue entender melhor
-const model = trainModel(inputXs, outputYs);
+const model = await trainModel(inputXs, outputYs);
+
+const pessoa = {
+  nome: "José",
+  idade: 28,
+  cor: "verde",
+  localizacao: "Curitiba",
+};
+
+//normalizando a idade da nova pessoa usando o mesmo padrão do treinoi
+// EX: idade_min = 25, idade_max = 40, então (28-25) / (40-25) = 0.2
+
+const pessoaTensorNormalizado = [
+  [
+    0.2, //idade normalizada
+    0, //cor azul
+    0, //cor vermelho
+    1, // cor verde
+    0, //localizacao Sao paulo
+    0, // localizacao Rio
+    1, //localizacao Curitiba
+  ],
+];
+
+const predictions = await predict(model, pessoaTensorNormalizado);
+const results = predictions
+  .sort((a, b) => b.prob - a.prob)
+  .map((p) => `${labelsNomes[p.index]} (${(p.prob * 100).toFixed(2)}%)`)
+  .join("\n");
+
+console.log(predictions);
+console.log(results);
